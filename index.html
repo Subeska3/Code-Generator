@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Coding Assistant</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=Syne:wght@400;600;700;800&display=swap"
+    rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked-katex-extension/lib/index.umd.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <header>
+    <div class="logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M3 5l3 3-3 3M8 11h5" stroke="#0d0f0e" stroke-width="1.8" stroke-linecap="round"
+            stroke-linejoin="round" />
+        </svg>
+      </div>
+      <span class="logo-name">gemma<span>4</span>.code</span>
+    </div>
+    <div class="header-right">
+      <div class="model-badge" id="model-badge">gemma4:e4b</div>
+      <div class="status-dot offline" id="status-dot"></div>
+      <button class="btn-icon" title="Toggle theme" onclick="toggleTheme()" id="theme-btn">☼</button>
+      <button class="btn-icon" title="Settings"
+        onclick="document.getElementById('settings-modal').classList.add('open')">⚙</button>
+      <button class="btn-icon" title="Clear chat" onclick="clearChat()">✕</button>
+    </div>
+  </header>
+
+  <div class="app-body">
+
+    <aside class="sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-label">Presets</div>
+        <button class="preset-btn active"
+          onclick="setPreset(this,'You are an expert coding assistant. Be concise, write clean code, and always explain your reasoning briefly.')">
+          <span class="dot" style="background:#4ade80"></span>General coder
+        </button>
+        <button class="preset-btn"
+          onclick="setPreset(this,'You are a Python expert. Prefer idiomatic Python, type hints, and clear docstrings. Always suggest better approaches when you see them.')">
+          <span class="dot" style="background:#60a5fa"></span>Python expert
+        </button>
+        <button class="preset-btn"
+          onclick="setPreset(this,'You are a JavaScript/TypeScript expert specializing in modern frameworks. Prefer functional patterns, React hooks, and TypeScript types.')">
+          <span class="dot" style="background:#fbbf24"></span>JS / TS
+        </button>
+        <button class="preset-btn"
+          onclick="setPreset(this,'You are a code reviewer. Analyze code for bugs, security issues, performance problems, and readability. Be direct and specific.')">
+          <span class="dot" style="background:#f87171"></span>Code reviewer
+        </button>
+        <button class="preset-btn"
+          onclick="setPreset(this,'You are a shell and DevOps expert. Help with bash, Docker, CI/CD, and system administration. Prioritize safety in destructive commands.')">
+          <span class="dot" style="background:#a78bfa"></span>Shell / DevOps
+        </button>
+      </div>
+
+      <div class="sidebar-sep"></div>
+
+      <div class="settings-block">
+        <div class="sidebar-label">Model</div>
+        <div class="setting-row">
+          <select class="setting-select" id="model-select" onchange="updateModel(this.value)">
+            <option value="gemma4">gemma4 (e4b)</option>
+            <option value="gemma4:e2b">gemma4:e2b</option>
+            <option value="gemma4:26b">gemma4:26b</option>
+            <option value="gemma4:31b">gemma4:31b</option>
+          </select>
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">Temperature</div>
+          <input type="range" min="0" max="100" value="20" style="width:100%;accent-color:var(--accent);"
+            id="temp-slider" oninput="document.getElementById('temp-val').textContent=(this.value/100).toFixed(2)">
+          <div style="font-size:10px;color:var(--muted);text-align:right;" id="temp-val">0.20</div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="chat-main">
+      <div class="messages" id="messages">
+        <div class="welcome" id="welcome">
+          <div class="welcome-icon">
+            <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+              <path d="M6 9l5 5-5 5M13 19h9" stroke="#4ade80" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round" />
+            </svg>
+          </div>
+          <h2>Gemma 4</h2>
+          <p>100% local. No tokens billed.</p>
+          <div class="welcome-chips">
+            <button class="chip" onclick="sendChip('Explain how async/await works in Python')">async/await in
+              Python</button>
+            <button class="chip" onclick="sendChip('Write a Dockerfile for a Node.js app')">Dockerfile for Node</button>
+            <button class="chip"
+              onclick="sendChip('Review this code for bugs:\n\ndef divide(a, b):\n    return a / b')">Review code for
+              bugs</button>
+            <button class="chip" onclick="sendChip('What is the time complexity of quicksort?')">Quicksort
+              complexity</button>
+            <button class="chip" onclick="sendChip('Write a React hook for debouncing')">React debounce hook</button>
+            <button class="chip" onclick="sendChip('How do I reverse a linked list in Python?')">Reverse linked
+              list</button>
+          </div>
+        </div>
+        <div id="scroll-anchor"></div>
+      </div>
+
+      <div class="input-area">
+        <div class="input-wrapper">
+          <div class="input-top">
+            <textarea id="user-input" rows="1" placeholder="Ask anything about code…" onkeydown="handleKey(event)"
+              oninput="autoResize(this)"></textarea>
+            <button class="send-btn" id="send-btn" onclick="sendMessage()">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M2 14L14 8 2 2v4.5l8 1.5-8 1.5V14z" fill="#0d0f0e" />
+              </svg>
+            </button>
+          </div>
+          <div class="input-bottom">
+            <div class="input-actions">
+              <button class="input-tag" onclick="insertSnippet()">+ code block</button>
+              <button class="input-tag" onclick="insertSnippet2()">explain this</button>
+            </div>
+            <span>⌘↵ to send · Ollama on <span id="endpoint-display">localhost:11434</span></span>
+          </div>
+        </div>
+      </div>
+    </main>
+
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <!-- Settings modal -->
+  <div class="modal-overlay" id="settings-modal">
+    <div class="modal">
+      <h3>Connection settings</h3>
+      <div>
+        <label>Ollama base URL</label>
+        <input id="ollama-url" type="text" value="http://localhost:11434" placeholder="http://localhost:11434">
+      </div>
+      <div
+        style="font-size:11px;color:var(--muted);line-height:1.6;background:var(--surface2);border-radius:6px;padding:10px;">
+        Make sure Ollama is running:<br>
+        <span style="color:var(--accent-text);">ollama serve</span><br>
+        Then pull your model:<br>
+        <span style="color:var(--accent-text);">ollama pull gemma4</span>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-secondary"
+          onclick="document.getElementById('settings-modal').classList.remove('open')">Cancel</button>
+        <button class="btn-primary" onclick="saveSettings()">Save & test</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+
+</html>
